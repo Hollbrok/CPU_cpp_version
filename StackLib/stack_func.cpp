@@ -1,459 +1,280 @@
-#define DOUBLE_T
-#define HIGH_SECURE
 #include "stack.h"
 
-int ERROR_STATE                  = 0;
-int DOUBLE_CONSTRUCT             = 0;
-char* addres                     = "log_stack.txt";
-
-
-void stack_construct(stack_t* Stack, int max_c, char* name)
+static int ERROR_STATE_STACK = 0;
+Stack::Stack(const char *name, size_t capacity) :
+	canary_left_(static_cast<int> ( CANARY_L_STACK )),
+	data_(nullptr),
+	name_(name),
+	capacity_(capacity),
+	cur_size_(0),
+	hash_(0),
+	error_state_(0),
+	canary_right_(static_cast<int> ( CANARY_L_STACK ))
 {
-    assert(Stack && "You passed nullptr to stack_consturct");
+	assert(this && "You passed nullptr to stack_consturct");
 
-    if(max_c < 0 || max_c >= 100000)
-    {
-        ERROR_STATE = 14;
-        char mass[67] = "******************************************************************";
+    data_ = (data_type*) calloc(capacity + 2, sizeof(data_type));
+	assert(data_ && "Can't calloc memory for data_\n");
 
+    data_[0] = static_cast<data_type> ( CANARY_LEFT_DATA );
+    data_[capacity + 1] = static_cast<data_type> ( CANARY_RIGHT_DATA );
 
-        FILE* res = fopen("log_stack.txt", "ab");
+    for(int i = 1; i < capacity + 1; i++)
+        data_[i] = POISON;
 
-        fprintf(res, "%*s\n", 66, mass);
-        fprintf(res, "ERROR IN MAX_C NUMBER\n");
-        fprintf(res, "%*s\n", 66, mass);
+    data_++;
 
-        fclose(res);
-
-          return;
-    }
-
-    if(Stack == nullptr || DOUBLE_CONSTRUCT)
-    {
-        ERROR_STATE = 1;
-        stack_dump(Stack);
-        return;
-    }
-
-    if(Stack->canary_left_stack == CANARY_L_STACK || Stack->canary_right_stack == CANARY_R_STACK)
-    {
-        DOUBLE_CONSTRUCT = 8;
-        return;
-    }
-
-    Stack->canary_left_stack = (int) CANARY_L_STACK;
-    Stack->canary_right_stack = (int) CANARY_R_STACK;
-
-
-    Stack->cur_size   = 0;
-    Stack->hash_stack = 0;
-    Stack->name       = name;
-
-    if(max_c >= 0)
-    {
-        Stack->capacity = max_c;
-    }
-
-    else
-    {
-        FILE* res = fopen("log_stack.txt", "ab");
-        fprintf(res, "******************************************************************\n");
-        ERROR_STATE = CAPACITY_LESS_ZERO;
-        fprintf(res, "ERROR №%d: %s.\n", ERROR_STATE, error_print());
-        fprintf(res, "******************************************************************\n");
-        fclose(res);
-        return;
-    }
-
-    Stack->data = (type_data*)calloc(max_c + 2, sizeof(type_data));
-
-    if (Stack->data == nullptr)
-    {
-        stack_dump(Stack);
-        return;
-    }
-
-    else
-    {
-        Stack->data[0] = (type_data) CANARY_LEFT_DATA;
-        Stack->data[max_c + 1] = (type_data) CANARY_RIGHT_DATA;
-
-        for(int i = 1; i < max_c + 1; i++)
-        {
-            Stack->data[i] = POISON;
-        }
-
-        Stack->data++;
-    }
-    //printf("Иду в assert_ok\n");
-    ASSERT_OK
-    //printf("После assert_ok\n");
+	//ASSERT_OK
 }
 
-void stack_destruct(stack_t* Stack)
+Stack::~Stack()
 {
-    ASSERT_OK
+	assert(this && "Stack is nullptr in ~Stack\n");
+    //ASSERT_OK
 
-    for(int i = -1; i <= Stack->capacity; i++)
-        Stack->data[i] = POISON;
+    for(int i = -1; i <= capacity_; i++)
+    	data_[i] = POISON;
 
-    type_data* pointer =(type_data*) ((char*)Stack->data - sizeof(type_data));
+    data_type* pointer =(data_type*) ((char*)data_ - sizeof(data_type));
     free(pointer);
 
-    Stack->data = nullptr;
+    data_ = nullptr;
 
-    Stack->cur_size = POISON_SIZES;
-    Stack->capacity = POISON_SIZES;
+    cur_size_ = -1;
+    capacity_ = -1;
+
 }
 
-void push_stack(stack_t* Stack, type_data push_num)
+void Stack::push (data_type push_num)
 {
     assert((push_num != NAN) && "You passed incorrect number to push_stack");
-    assert(Stack && "You passed nullptr to push_stack");
-    ASSERT_OK
+    assert(this && "You passed nullptr to push");
+    //ASSERT_OK
 
     FILE* res = fopen("log_stack.txt", "ab");
+	assert(res && "cann't open log_stack.txt\n");
 
-    if(FORMAT != "s" && FORMAT != "c")
+    if(cur_size_ == capacity_)
     {
-        //CHECK_CAP
+        printf("Must call add_memory in push\n") ;//add_memory();
+        data_[cur_size_++] = push_num;
+        this->calc_hash(); // hash_stack(Stack);
     }
-
-    if((FORMAT == "s") || (FORMAT == "c"))
-    {
-        if(Stack->cur_size == Stack->capacity)
-        {
-            add_memory(Stack);
-            fclose(res);
-            Stack->data[Stack->cur_size++] = push_num;
-            hash_stack(Stack);
-        }
-
-        else
-        {
-            fclose(res);
-            Stack->data[Stack->cur_size++] = push_num;
-            hash_stack(Stack);
-        }
-    }
-
-    else if(Stack->cur_size == Stack->capacity)
-    {
-        add_memory(Stack);
-        fclose(res);
-        Stack->data[Stack->cur_size++] = push_num;
-        hash_stack(Stack);
-    }
-
     else
     {
-        fclose(res);
-        Stack->data[Stack->cur_size++] = push_num;
-        hash_stack(Stack);
+        data_[cur_size_++] = push_num;
+        this->calc_hash(); // hash_stack(Stack);
     }
-
+	fclose(res);
+    return;
 }
 
-type_data pop_stack(stack_t* Stack)
+data_type Stack::pop()
 {
-    if(ERROR_STATE)
-        return POISON;
+	assert(this && "You passed nullptr to pop");
+    // verify();
 
-    ASSERT_POP_OK
+    // ASSERT_POP_OK
 
-    if(Stack->cur_size <= (Stack->capacity / REAL_MULTIPLIER + 1))
+    if(false)//if(Stack->cur_size <= (Stack->capacity / REAL_MULTIPLIER + 1))
     {
-        add_memory(Stack);
-        Stack->cur_size--;
-        type_data temp = Stack->data[Stack->cur_size];
-        Stack->data[Stack->cur_size] = POISON;
-        hash_stack(Stack);
-        ASSERT_POP_OK
+        printf("Must call add_memory in pop\n") ;//add_memory();
+        cur_size_--;
+        data_type temp = data_[cur_size_];
+        data_[cur_size_] = POISON;
+
+		this->calc_hash(); // hash_stack(Stack);
+        //ASSERT_POP_OK
         return temp;
     }
 
-    else if(Stack->cur_size > 0)
+    else if(cur_size_ > 0)
     {
-        type_data temp = Stack->data[Stack->cur_size - 1];
-        Stack->cur_size--;
-        Stack->data[Stack->cur_size] = POISON;
-        hash_stack(Stack);
-        ASSERT_POP_OK
+		cur_size_--;
+        data_type temp = data_[cur_size_];
+        data_[cur_size_] = POISON;
+
+        this->calc_hash(); // hash_stack(Stack);
+        //ASSERT_POP_OK
         return temp;
     }
 
-    ASSERT_POP_OK
-
+    //ASSERT_POP_OK
+	printf("cur_size <= 0 in pop\n");
     return  POISON;
 
 }
 
-void stack_dump(stack_t* Stack)
+void Stack::dump()
 {
-    //printf("ERROR_STATE = %d\n", ERROR_STATE);
-    if(ERROR_STATE == NULL_STACK_PTR)
-    {
-        return;
-    }
+	assert(this && "You passed nullptr to dump");
 
-    char* sec_lvl = define_lvl();
-
+    // char* sec_lvl = define_lvl();
+    printf("In dump\n");
     char mass[67] = "******************************************************************";
 
     FILE* res = fopen("log_stack.txt", "ab");
     assert(res && "can't open file log_stack.txt");
     fprintf(res, "\n%*s\n", 66, mass);
-    //printf("here\n");
-    if(ERROR_STATE)
-        fprintf(res, "Stack (ERROR #%d : %s) [%p]. \nSecurity lvl is %s\n", ERROR_STATE, error_print(), Stack, sec_lvl);
+
+	using namespace my_errors;
+
+    if(error_state_)
+    {
+        printf("error_state_ = %d\n", error_state_);
+		for(int i = 0; i < NUMBER_OF_ERRORS; i++)
+			if(get_byte(error_state_, i + 1))
+				fprintf(res, "Stack (ERROR #%d : %s) [%p]. \n",
+				error_state_, error_print(i + 1), this);
+    }
     else
     {
-        fprintf(res, "Stack(OK) [%p]. \"%s\"\n", Stack, Stack->name);
+        fprintf(res, "Stack(OK) [%p]. \"%s\"\n", this, name_);
 
-        char* type_string = "";
-        if(FORMAT == "lg")
-        {
-            type_string = "double";
-        }
-        else if(FORMAT == "d")
-        {
-            type_string = "int";
-        }
-        else if(FORMAT == "c")
-        {
-            type_string = "char";
-        }
-        else if(FORMAT == "s")
-        {
-            type_string = "string";
-        }
-        else
-        {
-            type_string = "ERROR";
-        }
-
-        fprintf(res, "Security lvl is %s\n", sec_lvl);
-        fprintf(res, "Type of data is %s\n", type_string);
-        fprintf(res, "Hash        = %d\n", Stack->hash_stack);
-        fprintf(res, "size        = %d\n", Stack->cur_size);
-        fprintf(res, "capacity    = %d\n", Stack->capacity);
-        int cap = Stack->capacity;
-        int cur = Stack->cur_size;
+        // fprintf(res, "Security lvl is %s\n", sec_lvl);
+        // fprintf(res, "Type of data is %s\n", type_string);
+        fprintf(res, "Hash        = %d\n", hash_);
+        fprintf(res, "size        = %Iu\n", cur_size_);
+        fprintf(res, "capacity    = %Iu\n", capacity_);
+        size_t cap = capacity_;
+        size_t cur = cur_size_;
 
         for(int i = 0; i < cap; i++)
         {
             if(i < cur)
-            {
-                fprintf(res, "*[%d] data   = %" FORMAT "\n", i, Stack->data[i]);
-            }
-
+                fprintf(res, "*[%d] data   = %lg\n", i, data_[i]);
             else
-            {
-                fprintf(res, "*[%d] data   = %" FORMAT " (POISON)\n", i, POISON);
-            }
+                fprintf(res, "*[%d] data   = %lg (POISON)\n", i, POISON);
         }
     }
 
 
     fprintf(res, "%*s\n\n", 66, mass);
     fclose(res);
-    //printf("return\n");
+
     return;
 }
 
-int stack_verify(stack_t* Stack)
+int Stack::verify()
 {
-    assert(Stack && "You passed nullptr to stack_verify");
-    int hash_st = Stack->hash_stack;
-    if(ERROR_STATE == MAX_CAPACITY_ERROR)
+    assert(this && "You passed nullptr to verify");
+    int hash_st = hash_;
+
+    using namespace my_errors;
+
+    if(ERROR_STATE_STACK == MAX_CAPACITY_ERROR)
     {
+		error_state_ += MAX_CAPACITY_ERROR;
         return MAX_CAPACITY_ERROR;
     }
 
-    else if((Stack == nullptr))
+    else if((this == nullptr))
     {
-        ERROR_STATE = NULL_STACK_PTR;
+        error_state_ += NULL_STACK_PTR;
         return NULL_STACK_PTR;
     }
 
-    else if((hash_st != hash_stack(Stack)) && ((!low_sec) && (!med_sec)))
+    else if(hash_st != this->calc_hash())
     {
-        ERROR_STATE = HACK_STACK;
+        error_state_ += HACK_STACK;
         return HACK_STACK;
     }
 
-    else if(Stack->data == nullptr)
+    else if(data_ == nullptr)
     {
-        ERROR_STATE = NULL_DATA_PTR;
+        error_state_ += NULL_DATA_PTR;
         return NULL_DATA_PTR;
     }
 
-    else if((Stack->cur_size > Stack->capacity) && (!low_sec))
+    else if(cur_size_ > capacity_)
     {
-        ERROR_STATE = CUR_BIGGER_CAPACITY;
+        error_state_ += CUR_BIGGER_CAPACITY;
         return CUR_BIGGER_CAPACITY;
     }
 
-    else if((Stack->cur_size < 0) && (!low_sec))
+    else if(cur_size_ < 0)
     {
-        ERROR_STATE = CUR_LESS_ZERO;
+        error_state_ += CUR_LESS_ZERO;
         return CUR_LESS_ZERO;
 
     }
-
-    else if((isdigit(Stack->capacity)) && (!low_sec))
-        {
-            if(!isnan(Stack->capacity))
-            {
-                ERROR_STATE = CLASSIFY_CAPACITY;
-                return CLASSIFY_CAPACITY;
-            }
-        }
-    else if((Stack->capacity < 0) && (!low_sec))
-    {
-        ERROR_STATE = CAPACITY_LESS_ZERO;
-        return CAPACITY_LESS_ZERO;
-    }
-
-
-    else if((isdigit(Stack->cur_size)) && (!low_sec))
-        {
-            if(isnan(Stack->cur_size) && Stack->cur_size > 0)
-            {
-                ERROR_STATE = CLASSIFY_CUR;
-                return CLASSIFY_CUR;
-            }
-        }
-    else if((Stack->data[-1] != CANARY_LEFT_DATA) && ((!low_sec) && (!med_sec)))
-    {
-        ERROR_STATE = ERROR_DATA_LEFT;
+    else if(data_[-1] != CANARY_LEFT_DATA)
+	{
+        error_state_ += ERROR_DATA_LEFT;
         return ERROR_DATA_LEFT;
     }
 
-    else if((Stack->data[Stack->capacity] != (type_data) CANARY_RIGHT_DATA) && ((!low_sec) && (!med_sec)))
+    else if(data_[capacity_] != CANARY_RIGHT_DATA)
     {
-        ERROR_STATE = ERROR_DATA_RIGHT;
+        error_state_ += ERROR_DATA_RIGHT;
         return ERROR_DATA_RIGHT;
     }
 
-    else if((Stack->canary_left_stack != (int) CANARY_L_STACK) && ((!low_sec) && (!med_sec)))
+    else if(canary_left_ != static_cast<int> ( CANARY_L_STACK) )
     {
-        ERROR_STATE = ERROR_STACK_LEFT;
+        error_state_ += ERROR_STACK_LEFT;
         return ERROR_STACK_LEFT;
     }
 
-    else if((Stack->canary_right_stack != (int) CANARY_R_STACK) && ((!low_sec) && (!med_sec)))
+    else if(canary_right_ != static_cast<int> ( CANARY_R_STACK ) )
     {
-        ERROR_STATE = ERROR_STACK_RIGHT;
+        error_state_ += ERROR_STACK_RIGHT;
         return ERROR_STACK_RIGHT;
     }
 
     else
     {
-        //printf("1\n");
+        printf("No errors in verify\n");
         return false;
     }
 }
 
-char* error_print()
+char* Stack::error_print(int bit_of_error)
 {
-    //printf("in error_printf\n");
-    switch(ERROR_STATE)
+    char error_message[100] = {};
+    switch(bit_of_error)
     {
         case 1:
-            return "NULL STACK PTR";
+            strcpy(error_message, "NULL STACK PTR"); //error_message = "NULL STACK PTR";
+            break;
         case 2:
-            return "NULL DATA PTR";
+            strcpy(error_message, "NULL DATA PTR");
+            break;
         case 3:
-            return "CUR BIGGER THAN CAPACITY";
+            strcpy(error_message, "CUR BIGGER THAN CAPACITY");
+            break;
         case 4:
-            return "CUR LESS THAN ZERO";
+            strcpy(error_message, "CUR LESS THAN ZERO");
+            break;
         case 5:
-            return "CAPACITY LESS THAN ZERO";
+            strcpy(error_message, "CAPACITY LESS THAN ZERO");
+            break;
         case 6:
-            return "CAPACITY IS NOT A NORMAL NUMBER";
+            strcpy(error_message, "DOUBLE CONSTRUCT");
+            break;
         case 7:
-            return "CUR_SIZE IS NOT A NORMAL NUMBER";
+            strcpy(error_message, "ERROR_DATA_LEFT");
+            break;
         case 8:
-            return "DOUBLE CONSTRUCT";
-        case 9:
-            return "ERROR_DATA_LEFT";
+            strcpy(error_message, "ERROR_DATA_RIGHT");
+            break;
+		case 9:
+            strcpy(error_message, "Somebody is trying to hack a stack");
+            break;
         case 10:
-            return "ERROR_DATA_RIGHT";
-        case 11:
-            return "ERROR_STACK_LEFT";
-        case 12:
-            return "ERROR_STACK_RIGHT";
-        case 13:
-            return "Somebody is trying to hack a stack";
-        case 14:
-            return " MAX_CAPACITY_ERROR";
+            strcpy(error_message, "MAX_CAPACITY_ERROR");
+            break;
         default:
-            return "ERROR IN error_print();\n";
+            strcpy(error_message, "UNKNOWN ERROR IN error_print()\n");
+            break;
 
     }
+    return error_message;
 }
 
-void add_memory(stack_t* Stack)
+int Stack::calc_hash()
 {
-    ASSERT_OK
-
-    if(Stack->capacity == 0)
-    {
-        Stack->capacity = REAL_ADDER;
-        Stack->data     = (type_data*) realloc(Stack->data - 1, (Stack->capacity + 2) * sizeof(type_data));
-
-        for(int i = 0; i <= Stack->capacity; i++)
-        {
-            Stack->data[i] = POISON;
-        }
-
-        Stack->data++;
-        Stack->data[Stack->capacity] = (type_data) CANARY_RIGHT_DATA;
-        hash_stack(Stack);
-    }
-
-    else if(Stack->cur_size == Stack->capacity)
-    {
-        Stack->capacity *= 2;
-
-        Stack->data = (type_data*) realloc(Stack->data - 1, (Stack->capacity + 2) * sizeof(type_data));
-
-        for(int i = Stack->capacity / 2 + 1; i <= Stack->capacity; i++)
-            Stack->data[i] = POISON;
-
-        Stack->data++;
-        Stack->data[Stack->capacity] = (type_data) CANARY_RIGHT_DATA;
-        hash_stack(Stack);
-
-    }
-
-    else if(Stack->cur_size <= (Stack->capacity / REAL_REDUCER + 1)) //как только уменьшиться кол-во элементов в 4 раза(не включительно)
-    {
-        Stack->capacity /= 2;
-        Stack->data = (type_data*) realloc(Stack->data - 1, (Stack->capacity + 2) * sizeof(type_data));
-
-        Stack->data++;
-        Stack->data[Stack->capacity] = (type_data) CANARY_RIGHT_DATA;
-        hash_stack(Stack);
-
-    }
-
-    else if(Stack->cur_size <= REAL_ADDER)
-    {
-        return;
-    }
-
-    ASSERT_OK
-}
-
-int hash_stack(stack_t* Stack)
-{
-    if(Stack == nullptr)
-    {
-        stack_dump(Stack);
-        return 0;
-    }
+	assert(this && "You passed nullptr to hash_stack\n");
 
     /*int cur_size = 0;
     for(int i = 0; i < Stack->capacity; i++)
@@ -463,42 +284,37 @@ int hash_stack(stack_t* Stack)
             cur_size++;
         }
     printf("cur_size = %d\n", cur_size);*/
-    if(Stack->cur_size == 0)
+
+    if(cur_size_ == 0)
     {
-        Stack->hash_stack = 0;
+        hash_ = 0;
         return 0;
     }
 
     int Hash = 1;
-    int N    = Stack->capacity;
+    int N    = capacity_;
     double A = (sqrt(5) - 1) / 2;
 
 
-    double trash = 0;
+    //double trash = 0;
 
-    for(int i = 0; i < Stack->cur_size; i++)
+    for(int i = 0; i < cur_size_; i++)
     {
-        Hash += (int) (N * ((double)(A * ((int) (Stack->data[i]) | (int) (Stack->data[i - 1]))) - (int) (A * ((int) (Stack->data[i]) | (int) (Stack->data[i - 1]))))) + (int) (Stack->data[i]) ^ (int) (Stack->data[i - 1]) - (int) (Stack->data[i]) & (int) (Stack->data[i - 1]);
-        Hash += Stack->capacity;
+        Hash += (int) (N * ((double)(A * ((int) (data_[i]) | (int) (data_[i - 1]))) - (int) (A * ((int) (data_[i]) | (int) (data_[i - 1]))))) + (int) (data_[i]) ^ (int)
+        (data_[i - 1]) - ((int) (data_[i]) & (int) (data_[i - 1]));
+        Hash += capacity_;
         //Hash += ((int)(Stack->data));
-        Hash += *(Stack->name + strlen(Stack->name) % 2);//>> i % 2;
+        Hash += *(name_ + strlen(name_) % 2);//>> i % 2;
     }
 
-    Hash += abs((Stack->canary_left_stack >> 2));
-    Hash += abs((Stack->capacity * Stack->canary_right_stack) >> 2);
+    Hash += abs((canary_left_ >> 2));
+    Hash += (capacity_ * canary_right_) >> 2;
 
-    Stack->hash_stack = Hash;
+    hash_ = Hash;
     return Hash;
 }
 
-char* define_lvl()
+auto get_byte(int digit, int number_of_bit) -> bool
 {
-    if(low_sec)
-        return "LOW";
-    else if(med_sec)
-        return "MEDIUM";
-    else if(high_sec)
-        return "HIGH";
-    return "ERROR, CHECK YOUR CODE";
-
+    return (bool((1 << (number_of_bit - 1))  &  digit));
 }
