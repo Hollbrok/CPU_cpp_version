@@ -396,27 +396,35 @@ Bytecode::Bytecode(Code *code_class, bool need_debug) :
         free(temp);
         temp = nullptr;
 
+        FILE *assembler_txt = fopen("[!]assembler_code.txt", "w");
+        assert(assembler_txt && "Can't open file assembler_code.txt");
+
+        fprintf(assembler_txt, "666");
+
 		determine_status();
+		fclose(assembler_txt);
 		return;
+
 	}
 
 	determine_status();
 
 	FILE *assembler_txt = fopen("[!]assembler_code.txt", "w");
-	assert(assembler_txt);
-    //printf("here\n");
-	print_assem_id(assembler_txt)
+	assert(assembler_txt && "Can't open file assembler_code.txt");
+
+
+    print_assem_id(assembler_txt)
 
     flags_size = 0;
-   // printf("capacity is %d\n", byte_struct->bytecode_capacity);
-	for (int i = 0; i < bytecode_capacity_; i++)
-		if ((static_cast<int>(data_[i]) == CMD_POP) || (static_cast<int>(data_[i]) == CMD_PUSH))
-		{
-			fprintf(assembler_txt, "%lg ", data_[i++] + specifiers[flags_size++]);
-			fprintf(assembler_txt, "%lg ", data_[i]);
-		}
-		else
-			fprintf(assembler_txt, "%lg ", data_[i]);
+
+    for (int i = 0; i < bytecode_capacity_; i++)
+        if ((static_cast<int>(data_[i]) == CMD_POP) || (static_cast<int>(data_[i]) == CMD_PUSH))
+        {
+            fprintf(assembler_txt, "%lg ", data_[i++] + specifiers[flags_size++]);
+            fprintf(assembler_txt, "%lg ", data_[i]);
+        }
+        else
+            fprintf(assembler_txt, "%lg ", data_[i]);
 
 	free(specifiers);
     specifiers = nullptr;
