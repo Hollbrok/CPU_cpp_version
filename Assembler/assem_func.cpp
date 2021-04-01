@@ -4,7 +4,7 @@
 static int IS_LAST_COMMAND_PUSH = 0;
 static int IS_LAST_COMMAND_JMP = 0;
 
-Text::Text(FILE *user_code, bool need_dump = false) :
+Text::Text(FILE *user_code, bool need_dump) :
 	data_(nullptr),
 	lines_(nullptr),
 	num_of_lines_(0),
@@ -160,7 +160,7 @@ Text::~Text()
 
 //!
 
-Code::Code(Text* text_class, bool need_dump = false) :
+Code::Code(Text* text_class, bool need_dump) :
 	data_(nullptr),
 	length_(0),
 	terms_(0),

@@ -4,14 +4,14 @@ int main()	//int main(int argc, char *argv[])
 {
     printf("Assembling in progress..\n");
 
-    FILE* user_code = fopen("user_code[for user].txt", "rb");	// fopen(argv[1], "rb");
+    FILE* user_code = fopen("user_code[for user].asm", "rb");	// fopen(argv[1], "rb");
     assert(user_code);
 
-    Text text_class(user_code, true);
+    Text text_c(user_code);
 
-    Code code_class(&text_class, true);
+    Code code_c(&text_c);
 
-    Bytecode byte_class(&code_class, true);
+    Bytecode byte_c(&code_c);
 
     printf("DONE!!\n");
     fclose(user_code);
