@@ -346,8 +346,8 @@ Bytecode::Bytecode(Code *code_class, bool need_debug) :
 		transition_check(call, CMD_CALL)
 		transition_check(jmp, CMD_JMP)
 
-		bracket_check('[')
-		bracket_check('(')
+		bracket_check('[') // double
+		bracket_check('(') // char -- 0-255
 
 		else if (temp[strlen(temp) - 1] == ':')
 			data_[i] = CMD_LABEL;
@@ -583,6 +583,7 @@ auto get_labels(Label *labels, Code *code_class) -> number_of_labels
 	return cur_labels; //int amount_labels = cur_labels;
 }
 
+    // [rbx] <- temp
 inline bracket_exe(char spec, char *temp, Bytecode *byte_class, int *flags_size, double *specifiers, int i)
 {
 	using namespace my_commands;
