@@ -1,17 +1,24 @@
 #include "stack.h"
 
-static int ERROR_STATE_STACK = 0;
+int ERROR_STATE                  = 0;
+int DOUBLE_CONSTRUCT             = 0;
+char* addres                     = "log_stack.txt";
+
 Stack::Stack(const char *name, size_t capacity) :
-	canary_left_(static_cast<int> ( CANARY_L_STACK )),
+	canary_left_(( CANARY_L_STACK )),
 	data_(nullptr),
 	name_(name),
 	capacity_(capacity),
 	cur_size_(0),
 	hash_(0),
 	error_state_(0),
-	canary_right_(static_cast<int> ( CANARY_L_STACK ))
+	canary_right_(( CANARY_R_STACK ))
 {
 	assert(this && "You passed nullptr to stack_consturct");
+
+    FILE* res = fopen("log_stack.txt", "wb");
+    assert(res && "Can't open log_stack.txt");
+    fclose(res);
 
     data_ = (data_type*) calloc(capacity + 2, sizeof(data_type));
 	assert(data_ && "Can't calloc memory for data_\n");
@@ -24,13 +31,13 @@ Stack::Stack(const char *name, size_t capacity) :
 
     data_++;
 
-	//ASSERT_OK
+    hash_ = calc_hash();
+
 }
 
 Stack::~Stack()
 {
 	assert(this && "Stack is nullptr in ~Stack\n");
-    //ASSERT_OK
 
     for(int i = -1; i <= capacity_; i++)
     	data_[i] = POISON;
@@ -45,72 +52,171 @@ Stack::~Stack()
 
 }
 
-void Stack::push (data_type push_num)
+void Stack::push(data_type push_num)
 {
     assert((push_num != NAN) && "You passed incorrect number to push_stack");
     assert(this && "You passed nullptr to push");
-    //ASSERT_OK
+
+	ASSERT_OK
 
     FILE* res = fopen("log_stack.txt", "ab");
-	assert(res && "cann't open log_stack.txt\n");
+	assert(res && "can't open log_stack.txt\n");
 
     if(cur_size_ == capacity_)
     {
-        printf("Must call add_memory in push\n") ;//add_memory();
+		add_memory();
         data_[cur_size_++] = push_num;
-        this->calc_hash(); // hash_stack(Stack);
+        hash_ = calc_hash();
     }
     else
     {
         data_[cur_size_++] = push_num;
-        this->calc_hash(); // hash_stack(Stack);
+        hash_ = calc_hash();
     }
+
 	fclose(res);
     return;
+}
+
+void Stack::add_memory()
+{
+    using namespace my_errors;
+	assert(this && "You passed nullptr to add memory");
+
+	ASSERT_OK
+
+	if(capacity_ == 0)
+	{
+		capacity_ = REAL_START_SIZE;
+		data_     = (data_type*) realloc(data_ - 1, (capacity_ + 2) * sizeof(data_type));
+		assert(data_ && "Can't realloc memory for data_");
+
+		for(int i = 0; i < capacity_ + 1; i++)
+            data_[i] = POISON;
+
+		data_++;
+        data_[capacity_] = CANARY_RIGHT_DATA;
+		hash_ = calc_hash();
+	}
+	else if (cur_size_ == capacity_)
+	{
+		capacity_ *= 2;
+
+        data_ = (data_type*) realloc(data_ - 1, (capacity_ + 2) * sizeof(data_type));
+
+        for(int i = capacity_ / 2 + 1; i < capacity_ + 1; i++)
+            data_[i] = POISON;
+
+        data_++;
+        data_[capacity_] = CANARY_RIGHT_DATA;
+        hash_ = calc_hash();
+	}
+	else
+	{
+		printf("Error in add_memory\n");
+		error_state_ += REALLOC_ERROR;
+	}
+
 }
 
 data_type Stack::pop()
 {
 	assert(this && "You passed nullptr to pop");
-    // verify();
 
-    // ASSERT_POP_OK
+    ASSERT_POP_OK
 
-    if(false)//if(Stack->cur_size <= (Stack->capacity / REAL_MULTIPLIER + 1))
+    if ((cur_size_ <= (capacity_ / REAL_REDUCER + 1)) && (cur_size_ > REAL_START_SIZE))
     {
-        printf("Must call add_memory in pop\n") ;//add_memory();
-        cur_size_--;
+        reduce_memory();
+		cur_size_--;
         data_type temp = data_[cur_size_];
         data_[cur_size_] = POISON;
 
-		this->calc_hash(); // hash_stack(Stack);
-        //ASSERT_POP_OK
+		hash_ = calc_hash();
         return temp;
     }
 
-    else if(cur_size_ > 0)
+    else if (cur_size_ > 0)
     {
 		cur_size_--;
         data_type temp = data_[cur_size_];
         data_[cur_size_] = POISON;
 
-        this->calc_hash(); // hash_stack(Stack);
-        //ASSERT_POP_OK
+        hash_ = calc_hash();
         return temp;
     }
 
-    //ASSERT_POP_OK
-	printf("cur_size <= 0 in pop\n");
     return  POISON;
+}
 
+void Stack::reduce_memory()
+{
+    using namespace my_errors;
+	assert(this && "You passed nullptr to reduce_memory");
+
+	if(cur_size_ <= (capacity_ / REAL_REDUCER + 1))
+	{
+        capacity_ /= 2;
+        data_ = (data_type*) realloc(data_ - 1, (capacity_ + 2) * sizeof(data_type));
+
+        data_++;
+        data_[capacity_] = CANARY_RIGHT_DATA;
+        hash_ = calc_hash();
+
+    }
+	else
+	{
+		printf("Error in reduce_memory\n");
+		error_state_ +=	REALLOC_ERROR;
+	}
+}
+
+uint32_t Stack::calc_hash()
+{
+    assert(this && "You passed nullptr to calc_hash");
+
+    uint32_t total_hash = 0;
+
+    uint32_t i_1 = 0;
+    uint32_t hash_1 = 0;
+
+    while (i_1 != cur_size_)
+    {
+        hash_1 += data_[i_1++];
+        hash_1 += hash_1 << 10;
+        hash_1 ^= hash_1 >> 6;
+    }
+
+    hash_1 += hash_1 << 3;
+    hash_1 ^= hash_1 >> 11;
+    hash_1 += hash_1 << 15;
+
+    total_hash += hash_1;
+
+
+    uint32_t i_2 = 0;
+    uint32_t hash_2 = 0;
+
+    while (i_2 != strlen(name_))
+    {
+        hash_2 += name_[i_2++];
+        hash_2 += hash_1 << 10;
+        hash_2 ^= hash_1 >> 6;
+    }
+
+    hash_2 += hash_2 << 3;
+    hash_2 ^= hash_2 >> 11;
+    hash_2 += hash_2 << 15;
+
+    total_hash += hash_2;
+
+    return total_hash;
 }
 
 void Stack::dump()
 {
 	assert(this && "You passed nullptr to dump");
 
-    // char* sec_lvl = define_lvl();
-    printf("In dump\n");
     char mass[67] = "******************************************************************";
 
     FILE* res = fopen("log_stack.txt", "ab");
@@ -133,11 +239,11 @@ void Stack::dump()
 
         // fprintf(res, "Security lvl is %s\n", sec_lvl);
         // fprintf(res, "Type of data is %s\n", type_string);
-        fprintf(res, "Hash        = %d\n", hash_);
-        fprintf(res, "size        = %Iu\n", cur_size_);
-        fprintf(res, "capacity    = %Iu\n", capacity_);
-        size_t cap = capacity_;
-        size_t cur = cur_size_;
+        fprintf(res, "Hash        = %u\n", hash_);
+        fprintf(res, "size        = %d\n", cur_size_);
+        fprintf(res, "capacity    = %d\n", capacity_);
+        int cap = capacity_;
+        int cur = cur_size_;
 
         for(int i = 0; i < cap; i++)
         {
@@ -162,7 +268,7 @@ int Stack::verify()
 
     using namespace my_errors;
 
-    if(ERROR_STATE_STACK == MAX_CAPACITY_ERROR)
+    if(ERROR_STATE == MAX_CAPACITY_ERROR)
     {
 		error_state_ += MAX_CAPACITY_ERROR;
         return MAX_CAPACITY_ERROR;
@@ -174,7 +280,7 @@ int Stack::verify()
         return NULL_STACK_PTR;
     }
 
-    else if(hash_st != this->calc_hash())
+    else if(hash_st != calc_hash())
     {
         error_state_ += HACK_STACK;
         return HACK_STACK;
@@ -210,108 +316,50 @@ int Stack::verify()
         return ERROR_DATA_RIGHT;
     }
 
-    else if(canary_left_ != static_cast<int> ( CANARY_L_STACK) )
+    else if(canary_left_ !=  ( CANARY_L_STACK) )
     {
         error_state_ += ERROR_STACK_LEFT;
         return ERROR_STACK_LEFT;
     }
 
-    else if(canary_right_ != static_cast<int> ( CANARY_R_STACK ) )
+    else if(canary_right_ != ( CANARY_R_STACK ) )
     {
         error_state_ += ERROR_STACK_RIGHT;
         return ERROR_STACK_RIGHT;
     }
 
     else
-    {
-        printf("No errors in verify\n");
         return false;
-    }
 }
 
 char* Stack::error_print(int bit_of_error)
 {
-    char error_message[100] = {};
     switch(bit_of_error)
     {
         case 1:
-            strcpy(error_message, "NULL STACK PTR"); //error_message = "NULL STACK PTR";
-            break;
+            return "NULL STACK PTR";
         case 2:
-            strcpy(error_message, "NULL DATA PTR");
-            break;
+            return "NULL DATA PTR";
         case 3:
-            strcpy(error_message, "CUR BIGGER THAN CAPACITY");
-            break;
+            return "CUR BIGGER THAN CAPACITY";
         case 4:
-            strcpy(error_message, "CUR LESS THAN ZERO");
-            break;
+            return "CUR LESS THAN ZERO";
         case 5:
-            strcpy(error_message, "CAPACITY LESS THAN ZERO");
-            break;
+            return "CAPACITY LESS THAN ZERO";;
         case 6:
-            strcpy(error_message, "DOUBLE CONSTRUCT");
-            break;
+            return "DOUBLE CONSTRUCT";
         case 7:
-            strcpy(error_message, "ERROR_DATA_LEFT");
-            break;
+            return "ERROR_DATA_LEFT";
         case 8:
-            strcpy(error_message, "ERROR_DATA_RIGHT");
-            break;
+            return "ERROR_DATA_RIGHT";
 		case 9:
-            strcpy(error_message, "Somebody is trying to hack a stack");
-            break;
+            return "Somebody is trying to hack a stack";
         case 10:
-            strcpy(error_message, "MAX_CAPACITY_ERROR");
-            break;
+            return "MAX_CAPACITY_ERROR";
         default:
-            strcpy(error_message, "UNKNOWN ERROR IN error_print()\n");
-            break;
+            return "UNKNOWN ERROR IN error_print()\n";
 
     }
-    return error_message;
-}
-
-int Stack::calc_hash()
-{
-	assert(this && "You passed nullptr to hash_stack\n");
-
-    /*int cur_size = 0;
-    for(int i = 0; i < Stack->capacity; i++)
-        if(Stack->data[i] != POISON)
-        {
-            printf("Stack->data[%d] = %lg\n", i, Stack->data[i]);
-            cur_size++;
-        }
-    printf("cur_size = %d\n", cur_size);*/
-
-    if(cur_size_ == 0)
-    {
-        hash_ = 0;
-        return 0;
-    }
-
-    int Hash = 1;
-    int N    = capacity_;
-    double A = (sqrt(5) - 1) / 2;
-
-
-    //double trash = 0;
-
-    for(int i = 0; i < cur_size_; i++)
-    {
-        Hash += (int) (N * ((double)(A * ((int) (data_[i]) | (int) (data_[i - 1]))) - (int) (A * ((int) (data_[i]) | (int) (data_[i - 1]))))) + (int) (data_[i]) ^ (int)
-        (data_[i - 1]) - ((int) (data_[i]) & (int) (data_[i - 1]));
-        Hash += capacity_;
-        //Hash += ((int)(Stack->data));
-        Hash += *(name_ + strlen(name_) % 2);//>> i % 2;
-    }
-
-    Hash += abs((canary_left_ >> 2));
-    Hash += (capacity_ * canary_right_) >> 2;
-
-    hash_ = Hash;
-    return Hash;
 }
 
 auto get_byte(int digit, int number_of_bit) -> bool
