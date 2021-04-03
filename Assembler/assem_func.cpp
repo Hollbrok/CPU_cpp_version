@@ -429,9 +429,9 @@ Bytecode::Bytecode(Code *code_class, bool need_debug) :
 	free(specifiers);
     specifiers = nullptr;
 
-	for (int y = 0; y < amount_labels; y++)
+	/*for (int y = 0; y < amount_labels; y++)
 		if (labels[y].name)
-			free(labels[y].name);
+			free(labels[y].name);*/
 
 	free(labels);
 	labels = nullptr;
@@ -548,11 +548,11 @@ inline get_lexeme(int *j, Code *code_class, char *temp)
 
 auto get_labels(Label *labels, Code *code_class) -> number_of_labels
 {
-	for (int y = 0; y < MAX_LABELS; y++)
+	/*for (int y = 0; y < MAX_LABELS; y++)
 	{
 		labels[y].name = (char *)calloc(MAX_LABEL_SIZE, sizeof(char));
 		assert(labels[y].name);
-	}
+	}*/
 
 	char *temp = (char *)calloc(MAX_SIZE_COMMAND, sizeof(char));
 	assert(temp);

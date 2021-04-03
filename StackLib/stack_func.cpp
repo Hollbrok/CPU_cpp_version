@@ -335,7 +335,7 @@ void Stack::dump()
     return;
 }
 
-int Stack::verify()
+int Stack::verify_all()
 {
     assert(this && "You passed nullptr to verify");
     int hash_st = hash_;

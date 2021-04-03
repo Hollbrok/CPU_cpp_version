@@ -12,10 +12,11 @@
 #include <typeinfo>
 #include <ctype.h>
 #include <conio.h>
+//#include <except.h>
 #include "stack_config.h"
 
 #define ASSERT_OK            	\
-	if (verify())		 		\
+	if (verify_all())		 		\
 	{                        	\
 		printf("Error in verify\n");\
 		dump();   				\
@@ -23,7 +24,7 @@
 	}
 
 #define ASSERT_POP_OK        	\
-	if (verify()) 				\
+	if (verify_all()) 				\
 	{                        	\
 		printf("Error in pop\n");\
 		dump();   				\
@@ -46,11 +47,12 @@ private:
 
 	int canary_right_;
 
-	int verify();
+
 	uint32_t calc_hash();
 	char *error_print(int bit_of_error);
 	void add_memory();
 	void reduce_memory();
+
 
 public:
 	Stack(const char *name = "Default", size_t capacity = 0);
@@ -58,7 +60,15 @@ public:
 
 	void dump();
 	void push(data_type push_num);
+	int verify_all();
 	data_type pop();
+
+//! GETTERS
+
+    data_type get_data_num(int index) const {return data_[index];};
+    int get_cur_size() const {return cur_size_;};
+    int get_capacity() const {return capacity_;};
+    const char* get_name() const {return name_;};
 
 };
 

@@ -99,9 +99,9 @@ char* get_unknown_command();
 
 struct Label
 {
-    char* name    = nullptr;
-    size_t length = 0;
-    int adress    = 0;
+    char name[MAX_LABEL_SIZE] = {};
+    size_t length 			  = 0;
+    size_t adress    		  = 0;
 };
 
 
