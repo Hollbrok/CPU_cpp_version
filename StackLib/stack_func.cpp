@@ -203,6 +203,21 @@ data_type Stack::pop()
     return  POISON;
 }
 
+const data_type& Stack::operator[] (int num) const
+{
+	assert(this && "You passed nullptr to operator []");
+	assert(0 <= num && num <= cur_size_);
+	return  data_[num];
+}
+
+
+data_type& Stack::operator[] (int num)
+{
+	assert(this && "You passed nullptr to operator []");
+	assert(0 <= num && num <= cur_size_);
+	return data_[num];
+}
+
 void Stack::reduce_memory()
 {
     using namespace my_errors;
@@ -287,9 +302,13 @@ uint32_t Stack::calc_hash()
     return total_hash;
 }
 
-void Stack::dump()
+void Stack::dump(bool is_second_dump_by_assert)
 {
 	assert(this && "You passed nullptr to dump");
+    if(!is_second_dump_by_assert)
+    {
+        ASSERT_OK
+    }
 
     char mass[67] = "******************************************************************";
 
@@ -298,10 +317,10 @@ void Stack::dump()
     fprintf(res, "\n%*s\n", 66, mass);
 
 	using namespace my_errors;
-
+    //printf("error_state = %d\n", error_state_);
     if(error_state_)
     {
-        printf("error_state_ = %d\n", error_state_);
+        //printf("error_state_ = %d\n", error_state_);
 		for(int i = 0; i < NUMBER_OF_ERRORS; i++)
 			if(get_byte(error_state_, i + 1))
 				fprintf(res, "Stack (ERROR #%d : %s) [%p]. \n",

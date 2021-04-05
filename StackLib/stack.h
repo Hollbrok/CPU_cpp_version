@@ -19,7 +19,7 @@
 	if (verify_all())		 		\
 	{                        	\
 		printf("Error in verify\n");\
-		dump();   				\
+		dump(true);   				\
 		return;              	\
 	}
 
@@ -58,14 +58,22 @@ public:
 	Stack(const char *name = "Default", size_t capacity = 0);
 	~Stack();
 
-	void dump();
+    void dump(bool is_second_dump_by_assert = false);
 	void push(data_type push_num);
 	int verify_all();
 	data_type pop();
 
+//! SETTERS
+
+    const data_type& operator[] (int num) const;
+
+
 //! GETTERS
 
-    data_type get_data_num(int index) const {return data_[index];};
+	//const data_type& operator[] (int number) const;
+	data_type& operator[] (int num);
+
+    //data_type get_data_num(int index) const { assert(0 <= index && index < cur_size_); return data_[index];};
     int get_cur_size() const {return cur_size_;};
     int get_capacity() const {return capacity_;};
     const char* get_name() const {return name_;};
